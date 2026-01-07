@@ -1,4 +1,4 @@
-# docker-px4-core
+# ros-px4-bridge-docker
 
 Core PX4-in-Docker functionality for running PX4 SITL simulations with Gazebo and ROS 2.
 
