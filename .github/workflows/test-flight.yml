@@ -1,0 +1,110 @@
+name: Test Flight
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  flight-test:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up environment
+      run: |
+        echo "WORKSPACE=$HOME/workspace" >> $GITHUB_ENV
+        echo "VIDEO_DIR=$HOME/videos" >> $GITHUB_ENV
+        mkdir -p $HOME/workspace
+        mkdir -p $HOME/videos
+        mkdir -p $HOME/logs
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        ./scripts/install_dependencies.sh
+
+    - name: Install Gazebo
+      run: ./scripts/install_gazebo.sh
+
+    - name: Install DDS Agent
+      run: ./scripts/install_dds_agent.sh
+
+    - name: Prepare workspace
+      run: ./scripts/prepare_workspace.sh
+
+    - name: Build PX4
+      run: ./scripts/build_px4.sh
+
+    - name: Build ROS 2
+      run: ./scripts/build_ros2.sh
+
+    - name: Start DDS Agent
+      run: |
+        ./scripts/run_dds_agent.sh
+        sleep 5
+
+    - name: Start PX4 Simulation with video recording
+      run: |
+        export HEADLESS=0
+        export DISPLAY=:99
+
+        # Start virtual display for video recording
+        sudo apt-get install -y xvfb ffmpeg
+        Xvfb :99 -screen 0 1920x1080x24 &
+        sleep 3
+
+        # Start PX4 simulation in background
+        ./scripts/run_simulation.sh &
+
+        # Wait for simulation to be ready
+        sleep 30
+
+        # Start video recording
+        ffmpeg -f x11grab -video_size 1920x1080 -i :99 -codec:v libx264 -preset ultrafast -pix_fmt yuv420p $VIDEO_DIR/flight_test.mp4 &
+        FFMPEG_PID=$!
+        echo $FFMPEG_PID > /tmp/ffmpeg_pid.txt
+
+    - name: Run takeoff and landing test
+      run: |
+        source $WORKSPACE/ros2_ws/install/setup.bash
+        export DISPLAY=:99
+        python3 scripts/test_flight.py
+
+    - name: Stop video recording
+      if: always()
+      run: |
+        if [ -f /tmp/ffmpeg_pid.txt ]; then
+          FFMPEG_PID=$(cat /tmp/ffmpeg_pid.txt)
+          kill -INT $FFMPEG_PID || true
+          sleep 5
+        fi
+
+    - name: Collect logs
+      if: always()
+      run: |
+        echo "=== PX4 Log ==="
+        tail -n 500 $HOME/logs/px4_gz.log || true
+        echo "=== DDS Agent Log ==="
+        tail -n 500 $HOME/logs/microxrce_agent.log || true
+
+    - name: Upload video artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: flight-test-video
+        path: ~/videos/flight_test.mp4
+        retention-days: 30
+
+    - name: Upload logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: flight-test-logs
+        path: ~/logs/
+        retention-days: 7

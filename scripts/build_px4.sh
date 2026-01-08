@@ -14,6 +14,13 @@ export GZ_SIM_RESOURCE_PATH=$PX4_DIR/Tools/simulation/gz/models
 export GZ_SIM_SYSTEM_PLUGIN_PATH=$PX4_DIR/build/px4_sitl_default/build_gz-garden
 
 cd $PX4_DIR
-make distclean
+
+# Build PX4 SITL for Gazebo
+echo "Building PX4 SITL target..."
+HEADLESS=1 make px4_sitl_default
+
+# Build Gazebo models
+echo "Building Gazebo Garden models..."
+make px4_sitl_default gz_x500
 
 echo "PX4 Autopilot build completed!"
