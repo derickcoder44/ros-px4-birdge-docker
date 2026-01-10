@@ -9,7 +9,12 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     build-essential \
     cmake \
+    ccache \
     && rm -rf /var/lib/apt/lists/*
+
+# Configure ccache
+ENV PATH="/usr/lib/ccache:$PATH"
+ENV CCACHE_DIR=/root/.cache/ccache
 
 # Install Micro-XRCE-DDS Agent
 RUN cd /tmp && \
@@ -24,15 +29,22 @@ RUN cd /tmp && \
 
 # Set up ROS2 workspace
 WORKDIR /root/workspace
-RUN mkdir -p ros2_ws/src && \
-    cd ros2_ws/src && \
+RUN mkdir -p ros2_ws/src
+
+# Clone repos in separate layer for better caching
+RUN cd ros2_ws/src && \
     git clone -b ${PX4_VERSION} https://github.com/PX4/px4_msgs.git && \
     git clone -b release/v1.14 https://github.com/PX4/px4_ros_com.git
 
-# Build ROS 2 workspace
-RUN . /opt/ros/humble/setup.sh && \
+# Build ROS 2 workspace with BuildKit cache mount for faster rebuilds
+# Note: --symlink-install allows install/ to reference src/, so we keep both
+RUN --mount=type=cache,target=/root/.cache/ccache,sharing=locked \
+    . /opt/ros/humble/setup.sh && \
     cd ros2_ws && \
-    colcon build --symlink-install
+    colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release \
+        --cmake-args -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+        --cmake-args -DCMAKE_C_COMPILER_LAUNCHER=ccache || \
+    colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 
 # Set up environment
 ENV PX4_UXRCE_DDS_PORT=8888
