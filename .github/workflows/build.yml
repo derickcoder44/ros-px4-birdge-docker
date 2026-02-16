@@ -14,7 +14,7 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: poppy-robotics/ros-px4-bridge-docker
+  IMAGE_NAME: Poppy-Robotics/ros-px4-bridge-docker
 
 jobs:
   build-and-push:
