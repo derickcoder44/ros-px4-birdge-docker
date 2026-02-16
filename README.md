@@ -68,7 +68,7 @@ docker-px4-core/
 This module can be used as a git submodule in other projects that need PX4 simulation capabilities.
 
 ```bash
-git submodule add https://github.com/derickcoder44/docker-px4-core.git
+git submodule add https://github.com/Poppy-Robotics/ros-px4-bridge-docker.git
 ```
 
 ## License
