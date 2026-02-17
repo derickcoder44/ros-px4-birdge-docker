@@ -14,7 +14,7 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: Poppy-Robotics/ros-px4-bridge-docker
+  IMAGE_NAME: poppy-robotics/ros-px4-bridge-docker
 
 jobs:
   build-and-push:
@@ -58,5 +58,5 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: |
             type=gha
-            type=registry,ref=ghcr.io/Poppy-Robotics/ros-px4-bridge-docker:latest
+            type=registry,ref=ghcr.io/poppy-robotics/ros-px4-bridge-docker:latest
           cache-to: type=gha,mode=max
